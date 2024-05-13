@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iosLocation</title>
+</head>
+<body>
+    <div>
+        <div>
+            <button id="get">get location once</button>
+        </div>
+        <div>
+            <button id="watch">watch</button>
+            <span id="status">ready</span>
+            <button id="stop">stop</button>
+        </div>
+        <hr>
+        <div>
+            <table border="1" id="poslist">
+                <tr>
+                    <td>Time</td>
+                    <td>Long</td>
+                    <td>Lat</td>
+                    <td>Alt</td>
+                    <td>Speed</td>
+                    <td>distance</td>
+                    <td>Speed2</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</body>
+<script>
+    function cell(content) {
+        const td = document.createElement('td');
+        td.textContent = content;
+        return td;
+    }
+    function distance(x1, y1, x2, y2) {
+        if(x1 && y1 && x2 && y2) {
+            return Math.sqrt(Math.pow((x1 - x2), 2) + Math.pow((y1- y2), 2));
+        } else {
+            return 0;
+        }
+    }
+    function passed(pos) {
+        if (pos && lastpos) {
+            return distance(pos.longitude, pos.latitude, lastpos.longitude, lastpos.latitude);
+        } else {
+            return 0;
+        }
+    }
+    function speed(pos) {
+        const p = passed(pos);
+        if (p && pos && lastpos) {
+            return p/(pos.timestamp - lastpos.timestamp)*1000
+        } else {
+            return 0;
+        }
+    }
+
+    function createrow(pos) {
+        const tr = document.createElement('tr');
+        tr.appendChild(cell(new Date(pos.timestamp).toLocaleTimeString()));
+        tr.appendChild(cell(pos.coords.longitude?.toFixed(3)));
+        tr.appendChild(cell(pos.coords.latitude?.toFixed(3)));
+        tr.appendChild(cell(pos.coords.altitude?.toFixed(3)));
+        tr.appendChild(cell(pos.coords.speed));
+        tr.appendChild(cell(passed(pos)));
+        tr.appendChild(cell(speed(pos)));
+        return tr;
+    }
+    const elem = (id) => document.getElementById(id);
+    const table = elem('poslist');
+    let lastpos;
+    function onposition(pos) {
+        console.log(pos);
+        table.appendChild(createrow(pos));
+        lastpos = pos;
+    }
+    function getpos() {
+        navigator.geolocation.getCurrentPosition(onposition, (err) => {
+            console.error(err.message);
+        })
+    }
+    let watchid;
+    function watchpos() {
+        if (!watchid) {
+            watchid = navigator.geolocation.watchPosition((pos) => {
+                elem('status').textContent = 'watching';
+                onposition(pos);
+            }, (err) => {
+                console.error(err.message);
+                elem('status').textContent = 'error';
+            });
+        }
+    }
+    function stopwatch() {
+        if (watchid) {
+            navigator.geolocation.clearWatch(watchid);
+            elem('status').textContent = 'stopped';
+            watchid = null;
+        }
+    }
+    elem('get').onclick = getpos;
+    elem('watch').onclick = watchpos;
+    elem('stop').onclick = stopwatch;
+</script>
+</html>
